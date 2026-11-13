@@ -18,7 +18,9 @@ button.secondary{background:#fff;color:#202328;border:1px solid #dfe3e7}
 button:disabled{opacity:.45;cursor:not-allowed}
 button:active:not(:disabled){transform:translateY(1px)}
 .preview{background:#fff;border:1px solid #e3e6e9;border-radius:18px;padding:10px;box-shadow:0 8px 28px rgba(20,30,40,.06)}
-#card{display:block;width:100%;height:auto}
+#card{display:block;width:100%;height:auto;max-height:82vh;touch-action:pan-y}
+#card .ovl .ui{opacity:.55;transition:opacity .15s}
+#card:hover .ovl .ui,#card.dragging .ovl .ui{opacity:1}
 .panel{background:#fff;border:1px solid #e5e8eb;border-radius:16px;padding:14px;margin-top:16px}
 .panel h3{margin:0 0 12px;font-size:15px;color:#2a3037;display:flex;align-items:center;gap:8px}
 .panel h3 .tag{font-size:11px;font-weight:800;color:#02842A;background:#E9F7EE;border-radius:20px;padding:2px 8px}
@@ -47,9 +49,19 @@ textarea:focus,input:focus,select:focus{border-color:var(--green);box-shadow:0 0
 .opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .foot{font-size:12px;color:#8a9299;margin-top:10px;line-height:1.8}
 code{background:#F4F6F8;border:1px solid #E4E8EC;border-radius:5px;padding:1px 5px;font-size:12.5px;direction:ltr;display:inline-block}
+input[type=range]{padding:0;border:0;height:30px;accent-color:var(--green);background:transparent}
+input[type=range]:focus{box-shadow:none}
+input[type=number]{direction:ltr;text-align:left}
+label output{font-weight:800;color:var(--green);margin-right:6px}
+.drop{border:2px dashed #b9c4cc;border-radius:14px;padding:22px 14px;text-align:center;color:#59636b;font-size:14px;line-height:1.9;cursor:pointer;background:#fafcfd;transition:.15s;outline:none}
+.drop:hover,.drop:focus-visible{border-color:var(--green);background:#F0FBF4;color:#02842A}
+.drop .ico{font-size:30px;line-height:1.2}
+.veil{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;background:rgba(2,132,42,.13);border:5px dashed var(--green);font-size:30px;font-weight:800;color:#02842A;pointer-events:none}
+.veil.on{display:flex}
 @media(max-width:780px){.two,.opt-grid{grid-template-columns:1fr}}
-@media print{@page{size:400mm 150.75mm;margin:0}body{background:#fff}.shell{max-width:none;margin:0;padding:0}.bar,.panel,.warn,.status{display:none!important}.preview{border:0;border-radius:0;padding:0;box-shadow:none}#card{width:400mm;height:150.75mm}}
+@media print{body{background:#fff}.shell{max-width:none;margin:0;padding:0}.bar,.panel,.warn,.status,.veil{display:none!important}.preview{border:0;border-radius:0;padding:0;box-shadow:none}#card .ovl{display:none!important}}
 </style>
+<style id="pageStyle"></style>
 
 <script>
 window.MathJax = {
@@ -68,10 +80,11 @@ if (!window.MathJax || typeof window.MathJax.tex2svg !== 'function') {
 </script>
 </head>
 <body>
+<div class="veil" id="veil">أفلت الصورة هنا 🖼️</div>
 <main class="shell">
 
   <div class="bar">
-    <div class="brand">قالب <b>أستاذ أحمد فاروق</b> | اختيار من متعدد <span class="ver">v2</span></div>
+    <div class="brand">قالب <b>أستاذ أحمد فاروق</b> | اختيار من متعدد <span class="ver">v2.1</span></div>
     <button class="secondary" id="btnSvg">تحميل SVG</button>
     <button class="secondary" id="btnPng">PNG 1600×603</button>
     <button class="secondary" id="btnPng2">PNG @2x</button>
@@ -81,6 +94,38 @@ if (!window.MathJax || typeof window.MathJax.tex2svg !== 'function') {
   <div class="preview"><svg id="card" viewBox="0 0 1600 603" role="img" aria-label="معاينة بطاقة السؤال"></svg></div>
   <div class="warn" id="warn"></div>
   <div class="status" id="status"></div>
+
+  <section class="panel" id="sizePanel">
+    <h3>حجم الكارت <span class="tag">الكتابة والعناصر بتتظبط تلقائي</span></h3>
+    <div class="grid">
+      <div>
+        <label for="preset">مقاسات جاهزة</label>
+        <select id="preset">
+          <option value="1600x603">1600×603 — الأصلي</option>
+          <option value="1920x1080">1920×1080 — 16:9</option>
+          <option value="1280x720">1280×720 — 16:9</option>
+          <option value="1200x630">1200×630 — مشاركة</option>
+          <option value="1080x1080">1080×1080 — مربع</option>
+          <option value="1080x1350">1080×1350 — بورتريه 4:5</option>
+          <option value="1080x1920">1080×1920 — ستوري 9:16</option>
+          <option value="custom">مقاس مخصص</option>
+        </select>
+      </div>
+      <div>
+        <label for="cw">العرض (بكسل)</label>
+        <input id="cw" type="number" min="400" max="6000" step="10" inputmode="numeric">
+      </div>
+      <div>
+        <label for="ch">الارتفاع (بكسل)</label>
+        <input id="ch" type="number" min="100" max="12000" step="10" inputmode="numeric">
+      </div>
+      <div>
+        <label class="chk"><input type="checkbox" id="lock"> قفل النسبة (تغيير واحد يغيّر التاني)</label>
+        <button class="secondary" id="sizeReset" type="button" style="margin-top:9px">رجوع للحجم الأصلي 1600×603</button>
+      </div>
+    </div>
+    <div class="hint" id="sizeHint"></div>
+  </section>
 
   <section class="panel">
     <h3>الإعدادات</h3>
@@ -161,10 +206,32 @@ if (!window.MathJax || typeof window.MathJax.tex2svg !== 'function') {
   </section>
 
   <section class="panel" id="imgPanel" style="display:none">
-    <h3>صورة السؤال</h3>
-    <input type="file" id="img" accept="image/*" style="border:0;padding:0">
-    <div class="hint">ارفع الصورة أو الصقها بـ Ctrl+V. بتتظبط جوه الإطار بدون قص أو تمطيط، وبتتصغّر تلقائيًا عشان الحجم.</div>
-    <button class="secondary" id="clearImg" type="button" style="margin-top:8px">مسح الصورة</button>
+    <h3>صورة السؤال <span class="tag">سحب وإفلات + تكبير وتصغير</span></h3>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="اختيار صورة">
+      <div class="ico">🖼️</div>
+      <b>اسحب الصورة وأفلتها هنا</b> — أو اضغط للاختيار — أو الصقها بـ <code>Ctrl+V</code>
+    </div>
+    <input type="file" id="img" accept="image/*" hidden>
+    <div class="grid" style="margin-top:14px">
+      <div>
+        <label for="zoom">حجم الصورة <output id="zoomVal">100%</output></label>
+        <input type="range" id="zoom" min="10" max="600" step="1" value="100">
+      </div>
+      <div>
+        <label for="imgPW">عرض منطقة الصورة <output id="imgPWVal">640</output></label>
+        <input type="range" id="imgPW" min="360" max="1000" step="2" value="640">
+      </div>
+    </div>
+    <div class="tools" style="margin-top:10px">
+      <button class="secondary" id="imgFit" type="button">ملاءمة الإطار</button>
+      <button class="secondary" id="imgFill" type="button">تعبئة الإطار</button>
+      <button class="secondary" id="imgCenter" type="button">توسيط</button>
+      <button class="secondary" id="clearImg" type="button">مسح الصورة</button>
+    </div>
+    <div class="hint">
+      على الكارت نفسه: <b>اسحب الصورة</b> لتحريكها، <b>عجلة الماوس</b> فوقها للتكبير والتصغير، أو اسحب <b>الدوائر الخضراء في الأركان</b>.
+      دبل كليك على الصورة = رجوع للوضع الأصلي. الأجزاء اللي تطلع برّه الإطار بتتقص تلقائيًا، والخطوط الخضراء بتظهر في المعاينة بس ومش بتتصدّر.
+    </div>
   </section>
 
   <section class="panel">
@@ -516,20 +583,31 @@ function fitSingle(val, maxW, maxFs, minFs){
 
 /* ---------- بناء الكارت ---------- */
 const RED = '#FA0006', GREEN = '#02842A', BLACK = '#000000';
+const BASE_W = 1600, BASE_H = 603;
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/* الكارت بيترسم دايمًا على لوحة عرضها 1600 وحدة، وارتفاعها بيتحدد من نسبة المقاس المطلوب.
+   فأي مقاس (عرض × ارتفاع) بيطلع بنفس التصميم، والكتابة بتصغر/تكبر تلقائيًا لتناسب المساحة. */
+function cardDims(d){
+  const W = clamp(Math.round(+d.W || BASE_W), 400, 6000);
+  const H = clamp(Math.round(+d.H || BASE_H), 100, 12000);
+  const DH = Math.max(360, BASE_W * H / W);
+  return { W, H, DH };
+}
 
 function buildInto(s, d){
+  const { DH } = cardDims(d);
   s.innerHTML = '';
-  s.setAttribute('viewBox', '0 0 1600 603');
+  s.setAttribute('viewBox', `0 0 ${BASE_W} ${+DH.toFixed(3)}`);
   if (!s.getAttribute('role')) s.setAttribute('role', 'img');
 
-  el('rect', { width:1600, height:603, fill:'#fff' }, s);
-  el('rect', { x:18, y:18, width:1564, height:567, rx:53, fill:'none', stroke:'#EEF0F2', 'stroke-width':2 }, s);
+  el('rect', { width:BASE_W, height:DH, fill:'#fff' }, s);
+  el('rect', { x:18, y:18, width:1564, height:DH - 36, rx:53, fill:'none', stroke:'#EEF0F2', 'stroke-width':2 }, s);
   el('path', { d:'M 100 24 H 1500', fill:'none', stroke:RED, 'stroke-width':11, 'stroke-linecap':'round' }, s);
-  el('path', { d:'M 24 104 V 497 Q 24 576 104 576 H 390', fill:'none', stroke:GREEN, 'stroke-width':11, 'stroke-linecap':'round', 'stroke-linejoin':'round' }, s);
-  el('path', { d:'M 1576 104 V 497', fill:'none', stroke:BLACK, 'stroke-width':11, 'stroke-linecap':'round' }, s);
+  el('path', { d:`M 24 104 V ${DH - 106} Q 24 ${DH - 27} 104 ${DH - 27} H 390`, fill:'none', stroke:GREEN, 'stroke-width':11, 'stroke-linecap':'round', 'stroke-linejoin':'round' }, s);
+  el('path', { d:`M 1576 104 V ${DH - 106}`, fill:'none', stroke:BLACK, 'stroke-width':11, 'stroke-linecap':'round' }, s);
 
-  if (d.layout === 'image') buildImageLayout(s, d);
-  else buildTextLayout(s, d);
+  return d.layout === 'image' ? buildImageLayout(s, d, DH) : buildTextLayout(s, d, DH);
 }
 
 function drawBadge(s, d, x, y){
@@ -546,58 +624,119 @@ function drawBadge(s, d, x, y){
   return w;
 }
 
-function buildTextLayout(s, d){
-  const logo = el('image', { x:42, y:53, width:119, height:143, preserveAspectRatio:'xMidYMid meet' }, s);
+function buildTextLayout(s, d, DH){
+  /* k = نسبة الارتفاع الحالي للأصلي. عند k=1 الناتج مطابق للتصميم الأصلي بالظبط */
+  const k  = DH / BASE_H;
+  const mk = clamp(k, .6, 1), rk = clamp(k, .55, 1.6);
+  const top = 43 * mk, bot = 54 * mk;
+  const rowH = 98 * rk, rgap = 20 * rk, qgap = 37 * rk;
+  const optTop = DH - bot - rowH * 2 - rgap;
+  const qH = optTop - qgap - top;
+
+  const ls = clamp(qH / 253, .5, 1);
+  const logo = el('image', { x: 42 + (119 - 119 * ls) / 2, y: top + 10, width: 119 * ls, height: 143 * ls, preserveAspectRatio:'xMidYMid meet' }, s);
   logo.setAttributeNS(XL, 'xlink:href', LOGO);
 
-  el('rect', { x:184, y:43, width:1360, height:253, rx:31, fill:'#FCFDFD', stroke:'#E8EBEF', 'stroke-width':2 }, s);
-  el('path', { d:'M 214 44 H 1514', stroke:RED, 'stroke-width':5, 'stroke-linecap':'round', opacity:.85 }, s);
-  drawBadge(s, d, 1509, 62);
+  el('rect', { x:184, y:top, width:1360, height:qH, rx:31, fill:'#FCFDFD', stroke:'#E8EBEF', 'stroke-width':2 }, s);
+  el('path', { d:`M 214 ${top + 1} H 1514`, stroke:RED, 'stroke-width':5, 'stroke-linecap':'round', opacity:.85 }, s);
+  drawBadge(s, d, 1509, top + 19);
 
-  const L = fitQuestion(d.q, { maxW:1260, maxLines:4, maxH:184, maxFs:32, minFs:14, lh:1.22 });
-  drawQuestion(s, L, { top:108, rightEdge:1484, boxLeft:224, boxRight:1484, dir: dirOf(d.q) });
+  const ofs = 65 * clamp(k, .8, 1);
+  const L = fitQuestion(d.q, {
+    maxW: 1260,
+    maxLines: Math.max(2, Math.round(4 * qH / 253)),
+    maxH: Math.max(40, qH - ofs - 4),
+    maxFs: Math.round(32 * clamp(Math.sqrt(k), 1, 1.7)),
+    minFs: Math.max(9, Math.round(14 * Math.min(1, k))),
+    lh: 1.22
+  });
+  drawQuestion(s, L, { top: top + ofs, rightEdge:1484, boxLeft:224, boxRight:1484, dir: dirOf(d.q) });
 
+  const row2 = optTop + rowH + rgap;
   const specs = [
-    ['A', 830, 333, 1468, d.a, GREEN],
-    ['B', 830, 451, 1468, d.b, RED],
-    ['C',  70, 333,  708, d.c, BLACK],
-    ['D',  70, 451,  708, d.d, GREEN]
+    ['A', 830, optTop, d.a, GREEN],
+    ['B', 830, row2,   d.b, RED],
+    ['C',  70, optTop, d.c, BLACK],
+    ['D',  70, row2,   d.d, GREEN]
   ];
-  for (const [letter, x, y, cx, val, col] of specs){
-    const w = 700, h = 98, cy = y + 49;
+  const w = 700, h = rowH, R = h * 32 / 98;
+  for (const [letter, x, y, val, col] of specs){
+    const cy = y + h / 2, cx = x + w - 30 - R;
     const good = d.showAnswer && d.correct === letter;
-    el('rect', { x, y, width:w, height:h, rx:27, fill:'#fff', stroke: good ? GREEN : '#E4E8EC', 'stroke-width': good ? 3 : 2 }, s);
-    el('rect', { x: x + 18, y: y + 27, width:6, height:44, rx:3, fill: col, opacity:.9 }, s);
-    el('circle', { cx, cy, r:32, fill: col }, s);
-    tx(s, letter, { x:cx, y:cy + 11, fill:'#fff', 'font-family':'Inter,Arial,sans-serif', 'font-size':31, 'font-weight':700, 'text-anchor':'middle' });
+    el('rect', { x, y, width:w, height:h, rx: h * 27 / 98, fill:'#fff', stroke: good ? GREEN : '#E4E8EC', 'stroke-width': good ? 3 : 2 }, s);
+    el('rect', { x: x + 18, y: y + h * 27 / 98, width:6, height: h * 44 / 98, rx:3, fill: col, opacity:.9 }, s);
+    el('circle', { cx, cy, r:R, fill: col }, s);
+    tx(s, letter, { x:cx, y: cy + R * 11 / 32, fill:'#fff', 'font-family':'Inter,Arial,sans-serif', 'font-size': R * 31 / 32, 'font-weight':700, 'text-anchor':'middle' });
 
-    const fit = fitSingle(val, (cx - 60) - (x + 26), 32, 13);
-    drawLine(s, fit, cx - 60, cy + 11, dirOf(val));
+    const right = cx - R - 28;
+    const fit = fitSingle(val, right - (x + 26), Math.floor(R), Math.max(9, Math.round(13 * Math.min(1, rk))));
+    drawLine(s, fit, right, cy + h * 11 / 98, dirOf(val));
     if (good) checkBadge(s, x + w, y);
   }
   return L;
 }
 
-function buildImageLayout(s, d){
+/* ---------- مكان الصورة وتحريكها وتكبيرها ---------- */
+function imgGeom(inner, d){
+  const sc = clamp(+d.imgScale || 1, .1, 6);
+  const ox = +d.imgX || 0, oy = +d.imgY || 0;
+  const bw = inner.w * sc, bh = inner.h * sc;
+  const cx = inner.x + inner.w / 2 + ox, cy = inner.y + inner.h / 2 + oy;
+  return { inner, sc, ox, oy, bw, bh, cx, cy, x: cx - bw / 2, y: cy - bh / 2 };
+}
+/* حدود الصورة الفعلية (من غير المساحة الفاضية حواليها) */
+function tightRect(G, d){
+  const nw = +d.imgNW, nh = +d.imgNH;
+  if (!(nw > 0 && nh > 0)) return { x: G.x, y: G.y, w: G.bw, h: G.bh };
+  const f = Math.min(G.inner.w / nw, G.inner.h / nh) * G.sc;
+  const w = nw * f, h = nh * f;
+  return { x: G.cx - w / 2, y: G.cy - h / 2, w, h };
+}
+
+function buildImageLayout(s, d, DH){
   const F = fontStack(FAM);
-  el('rect', { x:60, y:43, width:640, height:412, rx:31, fill:'#FCFDFD', stroke:'#E8EBEF', 'stroke-width':2 }, s);
+  const k  = DH / BASE_H;
+  const mk = clamp(k, .6, 1), rk = clamp(k, .55, 1.6);
+  const top = 43 * mk, bot = 41 * mk;
+  const rowH = 86 * rk, gap = 21 * rk;
+  const optY = DH - bot - rowH;
+  const panH = optY - gap - top;
+
+  const imgPW = clamp(Math.round(+d.imgPW || 640), 360, 1000);
+  const tx0 = 60 + imgPW + 20;
+  const tw  = 1544 - tx0;
+
+  el('rect', { x:60, y:top, width:imgPW, height:panH, rx:31, fill:'#FCFDFD', stroke:'#E8EBEF', 'stroke-width':2 }, s);
+  const inner = { x:74, y: top + 14, w: imgPW - 28, h: panH - 28 };
+  let imgEl = null;
   if (d.img){
-    const p = el('image', { x:74, y:57, width:612, height:384, preserveAspectRatio:'xMidYMid meet' }, s);
-    p.setAttributeNS(XL, 'xlink:href', d.img);
+    const G = imgGeom(inner, d);
+    const cp = el('clipPath', { id:'imgclip' }, s);
+    el('rect', { x:inner.x, y:inner.y, width:inner.w, height:inner.h, rx:20 }, cp);
+    const gg = el('g', { 'clip-path':'url(#imgclip)' }, s);
+    imgEl = el('image', { x:G.x, y:G.y, width:G.bw, height:G.bh, preserveAspectRatio:'xMidYMid meet' }, gg);
+    imgEl.setAttributeNS(XL, 'xlink:href', d.img);
   } else {
-    el('rect', { x:76, y:59, width:608, height:380, rx:24, fill:'none', stroke:'#C9CED3', 'stroke-width':3, 'stroke-dasharray':'12 10' }, s);
-    tx(s, 'مكان الصورة', { x:380, y:260, fill:'#9AA1A8', 'font-family':F, 'font-size':28, 'font-weight':700, 'text-anchor':'middle' });
+    el('rect', { x:inner.x + 2, y:inner.y + 2, width:inner.w - 4, height:inner.h - 4, rx:24, fill:'none', stroke:'#C9CED3', 'stroke-width':3, 'stroke-dasharray':'12 10' }, s);
+    tx(s, 'مكان الصورة', { x: inner.x + inner.w / 2, y: inner.y + inner.h / 2 + 11, fill:'#9AA1A8', 'font-family':F, 'font-size':28, 'font-weight':700, 'text-anchor':'middle' });
   }
 
-  el('rect', { x:720, y:43, width:824, height:412, rx:31, fill:'#FCFDFD', stroke:'#E8EBEF', 'stroke-width':2 }, s);
-  el('path', { d:'M 750 44 H 1514', stroke:RED, 'stroke-width':5, 'stroke-linecap':'round', opacity:.85 }, s);
+  el('rect', { x:tx0, y:top, width:tw, height:panH, rx:31, fill:'#FCFDFD', stroke:'#E8EBEF', 'stroke-width':2 }, s);
+  el('path', { d:`M ${tx0 + 30} ${top + 1} H 1514`, stroke:RED, 'stroke-width':5, 'stroke-linecap':'round', opacity:.85 }, s);
 
-  const lg = el('image', { x:738, y:64, width:62, height:62, preserveAspectRatio:'xMidYMid meet' }, s);
+  const lg = el('image', { x:tx0 + 18, y:top + 21, width:62, height:62, preserveAspectRatio:'xMidYMid meet' }, s);
   lg.setAttributeNS(XL, 'xlink:href', LOGO);
-  drawBadge(s, d, 1509, 62);
+  drawBadge(s, d, 1509, top + 19);
 
-  const L = fitQuestion(d.q, { maxW:740, maxLines:8, maxH:300, maxFs:30, minFs:13, lh:1.35 });
-  drawQuestion(s, L, { top:144, rightEdge:1500, boxLeft:760, boxRight:1500, dir: dirOf(d.q) });
+  const L = fitQuestion(d.q, {
+    maxW: tw - 84,
+    maxLines: Math.max(3, Math.round(8 * panH / 412)),
+    maxH: Math.max(40, panH - 112),
+    maxFs: Math.round(30 * clamp(Math.sqrt(k), 1, 1.7)),
+    minFs: Math.max(9, Math.round(13 * Math.min(1, k))),
+    lh: 1.35
+  });
+  drawQuestion(s, L, { top: top + 101, rightEdge:1500, boxLeft: tx0 + 40, boxRight:1500, dir: dirOf(d.q) });
 
   const specs = [
     ['A', 1179, GREEN, d.a],
@@ -605,17 +744,20 @@ function buildImageLayout(s, d){
     ['C',  441, BLACK, d.c],
     ['D',   72, GREEN, d.d]
   ];
+  const w = 351, h = rowH, R = h * 29 / 86;
   for (const [letter, x, col, val] of specs){
-    const w = 351, h = 86, y = 476, cy = y + 43, cx = x + w - 44;
+    const y = optY, cy = y + h / 2, cx = x + w - 15 - R;
     const good = d.showAnswer && d.correct === letter;
-    el('rect', { x, y, width:w, height:h, rx:26, fill:'#fff', stroke: good ? GREEN : '#E4E8EC', 'stroke-width': good ? 3 : 2 }, s);
-    el('circle', { cx, cy, r:29, fill: col }, s);
-    tx(s, letter, { x:cx, y:cy + 11, fill:'#fff', 'font-family':'Inter,Arial,sans-serif', 'font-size':30, 'font-weight':700, 'text-anchor':'middle' });
+    el('rect', { x, y, width:w, height:h, rx: h * 26 / 86, fill:'#fff', stroke: good ? GREEN : '#E4E8EC', 'stroke-width': good ? 3 : 2 }, s);
+    el('circle', { cx, cy, r:R, fill: col }, s);
+    tx(s, letter, { x:cx, y:cy + h * 11 / 86, fill:'#fff', 'font-family':'Inter,Arial,sans-serif', 'font-size': R * 30 / 29, 'font-weight':700, 'text-anchor':'middle' });
 
-    const fit = fitSingle(val, (cx - 46) - (x + 18), 30, 12);
-    drawLine(s, fit, cx - 46, cy + 10, dirOf(val));
+    const right = cx - R - 17;
+    const fit = fitSingle(val, right - (x + 18), Math.floor(R * 30 / 29), Math.max(9, Math.round(12 * Math.min(1, rk))));
+    drawLine(s, fit, right, cy + h * 10 / 86, dirOf(val));
     if (good) checkBadge(s, x + w, y);
   }
+  L.imgRef = { inner, imgEl };
   return L;
 }
 
@@ -628,45 +770,182 @@ function checkBadge(s, x, y){
 const DEFAULTS = {
   q: 'كرة كتلتها $m=0.5\\,\\text{kg}$ مثبتة في طرف خيط طوله $r=0.8\\,\\text{m}$، وتدور في مسار رأسي بسرعة $v=4\\,\\text{m/s}$ عند الموضع الأفقي. احسب قوة الشد $T$ في الخيط.',
   a: '$5\\,\\text{N}$', b: '$10\\,\\text{N}$', c: '$15\\,\\text{N}$', d: '$20\\,\\text{N}$',
-  font: 'Cairo', layout: 'text', num: '', correct: '', showAnswer: true, img: null
+  font: 'Cairo', layout: 'text', num: '', correct: '', showAnswer: true,
+  W: 1600, H: 603, lock: false,
+  img: null, imgNW: 0, imgNH: 0, imgScale: 1, imgX: 0, imgY: 0, imgPW: 640
 };
 let S = { ...DEFAULTS };
 const KEY = 'qcard-v2';
 
+let imgSaved = null;
 function save(){
-  try {
-    localStorage.setItem(KEY, JSON.stringify(S));
-  } catch(e){
-    /* الصورة أكبر من مساحة localStorage — نحفظ باقي الإعدادات بس */
-    try { localStorage.setItem(KEY, JSON.stringify({ ...S, img: null })); } catch(e2){}
+  const rest = { ...S }; delete rest.img;
+  try { localStorage.setItem(KEY, JSON.stringify(rest)); } catch(e){}
+  /* الصورة بتتحفظ في مفتاح لوحدها وبس لما تتغيّر، عشان الحفظ يفضل سريع */
+  if (S.img !== imgSaved){
+    imgSaved = S.img;
+    try {
+      if (S.img) localStorage.setItem(KEY + ':img', S.img);
+      else localStorage.removeItem(KEY + ':img');
+    } catch(e){ /* الصورة أكبر من مساحة التخزين — مش هتتحفظ بس باقي الإعدادات هتتحفظ */ }
   }
 }
+let sTimer = 0;
+const saveSoon = () => { clearTimeout(sTimer); sTimer = setTimeout(save, 350); };
 function load(){
   try {
     const j = JSON.parse(localStorage.getItem(KEY) || 'null');
     if (j && typeof j === 'object') S = { ...DEFAULTS, ...j };
+    const im = localStorage.getItem(KEY + ':img');
+    if (im) S.img = im;
+    imgSaved = im ? S.img : null;
   } catch(e){}
 }
 
 /* ---------- الرسم ---------- */
-let warnTimer = 0;
+let live = { ref: null, ui: null };
+
 function render(){
   FAM = S.font || 'Cairo';
   const src = $('card');
+  src.classList.remove('dragging');
   const L = buildInto(src, S);
+  live = { ref: (L && L.imgRef) || null, ui: null };
+  drawOverlay(src);
 
   const w = $('warn');
   let msg = '';
-  const Q = (S.layout === 'image')
-    ? fitQuestion(S.q, { maxW:740, maxLines:8, maxH:300, maxFs:30, minFs:13, lh:1.35 })
-    : fitQuestion(S.q, { maxW:1260, maxLines:4, maxH:184, maxFs:32, minFs:14, lh:1.22 });
-  if (Q.trunc) msg = '⚠ نص السؤال أطول من المساحة — تم قصّه عند آخر سطر. اختصر النص أو استخدم الشكل «سؤال بصورة» اللي فيه مساحة أكبر.';
+  if (L && L.trunc) msg = '⚠ نص السؤال أطول من المساحة — تم قصّه عند آخر سطر. اختصر النص أو كبّر ارتفاع الكارت' +
+    (S.layout === 'image' ? ' أو قلّل عرض منطقة الصورة.' : ' أو استخدم الشكل «سؤال بصورة».');
   if (!MJOK) msg = (msg ? msg + '<br>' : '') + '⚠ محرّك المعادلات لم يتحمّل، فالمعادلات ظاهرة كنص خام.';
   w.innerHTML = msg;
   w.classList.toggle('on', !!msg);
 
   $('imgPanel').style.display = S.layout === 'image' ? 'block' : 'none';
+  updateSizeUI();
+  if (S.layout === 'image' && S.img && !(S.imgNW > 0)) probeDims(S.img);
   save();
+}
+
+function updateSizeUI(){
+  const { W, H } = cardDims(S);
+  $('btnPng').textContent = `PNG ${W}×${H}`;
+  $('btnPng2').textContent = 'PNG @2x';
+  $('sizeHint').textContent = `المقاس الحالي ${W}×${H} بكسل (النسبة ${(W / H).toFixed(2)}:1) — الـ PNG @2x هيطلع ${W * 2}×${H * 2}. الحد الأدنى للارتفاع ربع العرض.`;
+  const portrait = H > W;
+  const pw = (portrait ? 400 * W / H : 400).toFixed(2), ph = (portrait ? 400 : 400 * H / W).toFixed(2);
+  $('pageStyle').textContent = `@page{size:${pw}mm ${ph}mm;margin:0}@media print{#card{width:${pw}mm!important;height:${ph}mm!important;max-height:none!important}}`;
+}
+
+/* ---------- تحريك وتكبير الصورة على الكارت ---------- */
+function svgPt(s, e){
+  const pt = s.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const m = s.getScreenCTM();
+  return m ? pt.matrixTransform(m.inverse()) : { x: 0, y: 0 };
+}
+
+function applyImageGeom(){
+  const r = live.ref, u = live.ui;
+  if (!r || !u || !S.img || !r.imgEl) return;
+  const G = imgGeom(r.inner, S);
+  r.imgEl.setAttribute('x', G.x); r.imgEl.setAttribute('y', G.y);
+  r.imgEl.setAttribute('width', G.bw); r.imgEl.setAttribute('height', G.bh);
+  const t = tightRect(G, S);
+  for (const n of [u.outline, u.hit]){
+    n.setAttribute('x', t.x); n.setAttribute('y', t.y);
+    n.setAttribute('width', t.w); n.setAttribute('height', t.h);
+  }
+  const { DH } = cardDims(S);
+  const corners = [[t.x, t.y], [t.x + t.w, t.y], [t.x + t.w, t.y + t.h], [t.x, t.y + t.h]];
+  u.handles.forEach((h, i) => {
+    h.setAttribute('cx', clamp(corners[i][0], 14, BASE_W - 14));
+    h.setAttribute('cy', clamp(corners[i][1], 14, DH - 14));
+  });
+}
+
+function drawOverlay(s){
+  const ref = live.ref;
+  if (!ref) return;
+  const g = el('g', { class:'ovl' }, s);
+  const inner = ref.inner;
+
+  if (!S.img){
+    const hit = el('rect', { x:inner.x, y:inner.y, width:inner.w, height:inner.h, rx:24, fill:'#02842A', 'fill-opacity':.05, style:'cursor:pointer' }, g);
+    tx(g, 'اسحب صورة وأفلتها هنا أو اضغط للاختيار', {
+      x: inner.x + inner.w / 2, y: inner.y + inner.h / 2 + 50, fill:GREEN, 'font-family':fontStack(FAM),
+      'font-size': Math.max(12, Math.min(22, inner.w / 15)), 'font-weight':700, 'text-anchor':'middle', 'pointer-events':'none'
+    });
+    hit.addEventListener('click', () => $('img').click());
+    return;
+  }
+
+  const outline = el('rect', { class:'ui', fill:'none', stroke:GREEN, 'stroke-width':2.5, 'stroke-dasharray':'9 6', 'pointer-events':'none' }, g);
+  const hit = el('rect', { fill:'#000', 'fill-opacity':0, style:'cursor:move;touch-action:none' }, g);
+  const cur = ['nwse-resize', 'nesw-resize', 'nwse-resize', 'nesw-resize'];
+  const handles = cur.map(c => el('circle', { class:'ui', r:11, fill:'#fff', stroke:GREEN, 'stroke-width':3.5, style:`cursor:${c};touch-action:none` }, g));
+  live.ui = { outline, hit, handles };
+  applyImageGeom();
+
+  let st = null;
+  const begin = (e, kind) => {
+    e.preventDefault(); e.stopPropagation();
+    const p = svgPt(s, e), G = imgGeom(inner, S);
+    st = { kind, p0: p, ox: G.ox, oy: G.oy, sc: G.sc, cx: G.cx, cy: G.cy, d0: Math.hypot(p.x - G.cx, p.y - G.cy) || 1 };
+    try { e.target.setPointerCapture(e.pointerId); } catch(_){}
+    s.classList.add('dragging');
+  };
+  const move = e => {
+    if (!st) return;
+    const p = svgPt(s, e);
+    if (st.kind === 'move'){
+      S.imgX = st.ox + (p.x - st.p0.x);
+      S.imgY = st.oy + (p.y - st.p0.y);
+    } else {
+      S.imgScale = clamp(st.sc * Math.hypot(p.x - st.cx, p.y - st.cy) / st.d0, .1, 6);
+    }
+    applyImageGeom(); syncZoomUI();
+  };
+  const end = e => {
+    if (!st) return;
+    st = null; s.classList.remove('dragging');
+    try { e.target.releasePointerCapture(e.pointerId); } catch(_){}
+    save();
+  };
+  [hit, ...handles].forEach(n => {
+    n.addEventListener('pointermove', move);
+    n.addEventListener('pointerup', end);
+    n.addEventListener('pointercancel', end);
+  });
+  hit.addEventListener('pointerdown', e => begin(e, 'move'));
+  handles.forEach(h => h.addEventListener('pointerdown', e => begin(e, 'scale')));
+
+  hit.addEventListener('dblclick', () => resetImagePlace());
+  /* عجلة الماوس: تكبير/تصغير حوالين مكان المؤشر */
+  hit.addEventListener('wheel', e => {
+    e.preventDefault();
+    const dy = e.deltaMode === 1 ? e.deltaY * 30 : e.deltaY;
+    const G = imgGeom(inner, S);
+    const ns = clamp(G.sc * Math.exp(-dy * 0.0015), .1, 6);
+    const ratio = ns / G.sc;
+    const p = svgPt(s, e);
+    const icx = inner.x + inner.w / 2, icy = inner.y + inner.h / 2;
+    S.imgX = (p.x - icx) - ((p.x - icx) - G.ox) * ratio;
+    S.imgY = (p.y - icy) - ((p.y - icy) - G.oy) * ratio;
+    S.imgScale = ns;
+    applyImageGeom(); syncZoomUI(); saveSoon();
+  }, { passive:false });
+}
+
+function resetImagePlace(){
+  S.imgScale = 1; S.imgX = 0; S.imgY = 0;
+  syncZoomUI(); applyImageGeom(); save();
+}
+function fillScale(){
+  const nw = +S.imgNW, nh = +S.imgNH, inner = live.ref && live.ref.inner;
+  if (!(nw > 0 && nh > 0) || !inner) return 1;
+  const a = inner.w / nw, b = inner.h / nh;
+  return Math.max(a, b) / Math.min(a, b);
 }
 
 let rTimer = 0;
@@ -702,13 +981,14 @@ async function embeddedFontCss(fam){
 }
 
 async function svgBlobFor(data){
+  const { W, H } = cardDims(data);
   const tmp = document.createElementNS(NS, 'svg');
   buildInto(tmp, data);
   const copy = tmp.cloneNode(true);
   copy.setAttribute('xmlns', NS);
   copy.setAttribute('xmlns:xlink', XL);
-  copy.setAttribute('width', '1600');
-  copy.setAttribute('height', '603');
+  copy.setAttribute('width', String(W));
+  copy.setAttribute('height', String(H));
 
   const css = await embeddedFontCss(data.font);
   if (css){
@@ -723,18 +1003,21 @@ async function svgBlobFor(data){
   return new Blob([str], { type: 'image/svg+xml;charset=utf-8' });
 }
 
-async function blobToCanvas(blob, scale){
+async function blobToCanvas(blob, scale, W, H){
+  const cw = Math.round(W * scale), chh = Math.round(H * scale);
+  if (cw > 16000 || chh > 16000 || cw * chh > 2e8)
+    throw new Error('المقاس كبير جدًا للتصدير كـ PNG — قلّل الأبعاد أو حمّل SVG');
   const url = URL.createObjectURL(blob);
   try {
     const img = new Image();
     await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('تعذّر رسم الـ SVG')); img.src = url; });
     const c = document.createElement('canvas');
-    c.width = 1600 * scale; c.height = 603 * scale;
+    c.width = cw; c.height = chh;
     const x = c.getContext('2d');
     x.imageSmoothingEnabled = true;
     x.imageSmoothingQuality = 'high';
     x.scale(scale, scale);
-    x.drawImage(img, 0, 0, 1600, 603);
+    x.drawImage(img, 0, 0, W, H);
     return c;
   } finally { URL.revokeObjectURL(url); }
 }
@@ -747,15 +1030,17 @@ function saveBlob(blob, name){
 }
 
 async function pngBlob(data, scale){
+  const { W, H } = cardDims(data);
   const blob = await svgBlobFor(data);
-  const c = await blobToCanvas(blob, scale);
+  const c = await blobToCanvas(blob, scale, W, H);
   return await new Promise(r => c.toBlob(r, 'image/png'));
 }
 
 async function downloadPng(scale){
   try {
+    const { W, H } = cardDims(S);
     const blob = await pngBlob(S, scale);
-    saveBlob(blob, `question-card-${1600*scale}x${603*scale}.png`);
+    saveBlob(blob, `question-card-${W * scale}x${H * scale}.png`);
   } catch(e){ status('فشل التصدير: ' + e.message, true); }
 }
 
@@ -783,16 +1068,39 @@ function buildFontSelect(){
   sel.value = S.font;
 }
 
+const PRESETS = ['1600x603', '1920x1080', '1280x720', '1200x630', '1080x1080', '1080x1350', '1080x1920'];
+
+function syncZoomUI(){
+  const pct = Math.round(clamp(+S.imgScale || 1, .1, 6) * 100);
+  $('zoom').value = pct;
+  $('zoomVal').textContent = pct + '%';
+}
+
 function syncUI(){
   $('q').value = S.q; $('a').value = S.a; $('b').value = S.b; $('c').value = S.c; $('d').value = S.d;
   $('font').value = S.font; $('layout').value = S.layout; $('num').value = S.num;
   $('correct').value = S.correct; $('showAnswer').checked = !!S.showAnswer;
+  $('cw').value = S.W; $('ch').value = S.H; $('lock').checked = !!S.lock;
+  const key = `${S.W}x${S.H}`;
+  $('preset').value = PRESETS.includes(key) ? key : 'custom';
+  syncZoomUI();
+  $('imgPW').value = S.imgPW; $('imgPWVal').textContent = Math.round(S.imgPW);
 }
 
 function readUI(){
   S.q = $('q').value; S.a = $('a').value; S.b = $('b').value; S.c = $('c').value; S.d = $('d').value;
   S.font = $('font').value; S.layout = $('layout').value; S.num = $('num').value.trim();
   S.correct = $('correct').value; S.showAnswer = $('showAnswer').checked;
+}
+
+/* ---------- حجم الكارت ---------- */
+const sizeOK = (w, h) => w >= 400 && w <= 6000 && h >= 100 && h <= 12000 && h / w >= .25 && h / w <= 3;
+function commitSize(){
+  S.W = clamp(Math.round(+S.W || BASE_W), 400, 6000);
+  S.H = clamp(Math.round(+S.H || BASE_H), 100, 12000);
+  const r = S.H / S.W;
+  if (r < .25) S.H = Math.ceil(S.W * .25);
+  if (r > 3)   S.H = Math.floor(S.W * 3);
 }
 
 /* إدراج في مربع النص */
@@ -821,20 +1129,35 @@ function insertMath(){
 }
 
 /* ---------- الصورة ---------- */
-let userImg = null;
-function setImage(dataUrl){
-  userImg = dataUrl;
+const probing = new Set();
+function probeDims(src){
+  if (probing.has(src)) return;
+  probing.add(src);
+  const im = new Image();
+  im.onload = () => {
+    if (S.img !== src) return;
+    S.imgNW = im.naturalWidth; S.imgNH = im.naturalHeight;
+    render();
+  };
+  im.src = src;
+}
+
+function setImage(dataUrl, dims){
   S.img = dataUrl;
-  if (dataUrl){ S.layout = 'image'; $('layout').value = 'image'; }
+  S.imgScale = 1; S.imgX = 0; S.imgY = 0;
+  S.imgNW = dims ? dims.w : 0; S.imgNH = dims ? dims.h : 0;
+  if (dataUrl) S.layout = 'image';
+  syncUI();
   render();
 }
+
 function loadImageFile(file){
   if (!file || !file.type.startsWith('image/')) return;
   const fr = new FileReader();
   fr.onload = () => {
     const im = new Image();
     im.onload = () => {
-      const maxW = 1500, maxH = 1500;
+      const maxW = 2400, maxH = 2400;
       let w = im.width, h = im.height;
       const k = Math.min(1, maxW / w, maxH / h);
       if (k < 1){ w = Math.round(w * k); h = Math.round(h * k); }
@@ -843,8 +1166,11 @@ function loadImageFile(file){
       const x = c.getContext('2d');
       x.fillStyle = '#fff'; x.fillRect(0, 0, w, h);
       x.drawImage(im, 0, 0, w, h);
-      setImage(c.toDataURL('image/png'));
+      setImage(c.toDataURL('image/png'), { w, h });
+      status('✔ تم إدراج الصورة — اسحبها لتحريكها، وعجلة الماوس أو الدوائر الخضراء في الأركان للتكبير والتصغير.');
+      setTimeout(() => status(''), 7000);
     };
+    im.onerror = () => status('تعذّر قراءة الصورة دي.', true);
     im.src = fr.result;
   };
   fr.readAsDataURL(file);
@@ -889,7 +1215,6 @@ async function downloadBatch(){
   load();
   buildFontSelect();
   syncUI();
-  userImg = S.img || null;
 
   await initMath();
   const st = await loadFont(S.font);
@@ -945,8 +1270,79 @@ async function downloadBatch(){
     e.target.value = '';
   });
 
-  $('img').addEventListener('change', e => loadImageFile(e.target.files[0]));
-  $('clearImg').addEventListener('click', () => { $('img').value = ''; setImage(null); });
+  /* ----- حجم الكارت ----- */
+  const applySize = (w, h) => { S.W = w; S.H = h; schedule(); };
+  $('cw').addEventListener('input', e => {
+    const v = parseInt(e.target.value, 10);
+    if (!(v > 0)) return;
+    const h = S.lock ? Math.round(v * S.H / S.W) : S.H;
+    if (!sizeOK(v, h)) return;
+    if (S.lock) $('ch').value = h;
+    applySize(v, h);
+    $('preset').value = PRESETS.includes(`${v}x${h}`) ? `${v}x${h}` : 'custom';
+  });
+  $('ch').addEventListener('input', e => {
+    const v = parseInt(e.target.value, 10);
+    if (!(v > 0)) return;
+    const w = S.lock ? Math.round(v * S.W / S.H) : S.W;
+    if (!sizeOK(w, v)) return;
+    if (S.lock) $('cw').value = w;
+    applySize(w, v);
+    $('preset').value = PRESETS.includes(`${w}x${v}`) ? `${w}x${v}` : 'custom';
+  });
+  ['cw', 'ch'].forEach(id => $(id).addEventListener('change', () => {
+    const w = parseInt($('cw').value, 10), h = parseInt($('ch').value, 10);
+    if (w > 0) S.W = w;
+    if (h > 0) S.H = h;
+    commitSize(); syncUI(); render();
+  }));
+  $('lock').addEventListener('change', e => { S.lock = e.target.checked; save(); });
+  $('preset').addEventListener('change', e => {
+    if (e.target.value === 'custom') return;
+    const [w, h] = e.target.value.split('x').map(Number);
+    S.W = w; S.H = h; syncUI(); render();
+  });
+  $('sizeReset').addEventListener('click', () => { S.W = BASE_W; S.H = BASE_H; syncUI(); render(); });
+
+  /* ----- الصورة: اختيار / سحب وإفلات / لصق ----- */
+  $('img').addEventListener('change', e => { loadImageFile(e.target.files[0]); e.target.value = ''; });
+  $('drop').addEventListener('click', () => $('img').click());
+  $('drop').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('img').click(); } });
+  $('clearImg').addEventListener('click', () => setImage(null));
+  $('imgFit').addEventListener('click', resetImagePlace);
+  $('imgFill').addEventListener('click', () => {
+    S.imgScale = clamp(fillScale(), .1, 6); S.imgX = 0; S.imgY = 0;
+    syncZoomUI(); applyImageGeom(); save();
+  });
+  $('imgCenter').addEventListener('click', () => { S.imgX = 0; S.imgY = 0; applyImageGeom(); save(); });
+  $('zoom').addEventListener('input', e => {
+    S.imgScale = clamp(+e.target.value / 100, .1, 6);
+    $('zoomVal').textContent = e.target.value + '%';
+    applyImageGeom(); saveSoon();
+  });
+  $('imgPW').addEventListener('input', e => {
+    S.imgPW = +e.target.value;
+    $('imgPWVal').textContent = e.target.value;
+    schedule();
+  });
+
+  const hasFiles = e => !!(e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files'));
+  let dragDepth = 0;
+  window.addEventListener('dragenter', e => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; $('veil').classList.add('on'); });
+  window.addEventListener('dragover',  e => { if (!hasFiles(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+  window.addEventListener('dragleave', e => {
+    if (!hasFiles(e)) return;
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth) $('veil').classList.remove('on');
+  });
+  window.addEventListener('drop', e => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0; $('veil').classList.remove('on');
+    const f = Array.from(e.dataTransfer.files).find(f => f.type.startsWith('image/'));
+    if (f) loadImageFile(f); else status('الملف اللي سحبته مش صورة.', true);
+  });
+
   document.addEventListener('paste', e => {
     if (e.target && e.target.id === 'batch') return;
     for (const it of ((e.clipboardData || {}).items || [])){
@@ -977,7 +1373,6 @@ async function downloadBatch(){
 
   $('reset').addEventListener('click', () => {
     S = { ...DEFAULTS };
-    userImg = null;
     $('batch').value = '';
     syncUI();
     render();
@@ -989,9 +1384,12 @@ async function downloadBatch(){
 
 /* ---------- API ---------- */
 window.QuestionCard = {
-  version: '2.0',
+  version: '2.1',
   get data(){ return { ...S }; },
-  render(d){ S = { ...S, ...d }; syncUI(); render(); return S; },
+  render(d){
+    if (d && 'img' in d && d.img !== S.img) d = { imgNW:0, imgNH:0, imgScale:1, imgX:0, imgY:0, ...d };
+    S = { ...S, ...d }; commitSize(); syncUI(); render(); return S;
+  },
   toSVG(){ return svgBlobFor(S); },
   png(scale){ return pngBlob(S, scale || 1); },
   build(data){ const s = document.createElementNS(NS,'svg'); buildInto(s, data); return s; }
